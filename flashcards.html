@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcards de Estudio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f2ec;
+    --ink: #1a1814;
+    --muted: #7a756c;
+    --accent1: #c8572a;
+    --accent2: #2a6fc8;
+    --card-bg: #ffffff;
+    --border: #ddd8d0;
+    --tab-h: 52px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 48px 40px 0;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  header h1 span { color: var(--accent1); }
+  .subtitle {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  /* ── Tabs ── */
+  .tabs-wrap {
+    max-width: 900px;
+    margin: 36px auto 0;
+    padding: 0 40px;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+  }
+  .tab-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: .04em;
+    padding: 12px 22px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color .2s, border-color .2s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--ink); }
+  .tab-btn.active { color: var(--ink); border-bottom-color: var(--accent1); }
+
+  /* ── Panel ── */
+  .panel {
+    display: none;
+    padding: 32px 40px 60px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .panel.active { display: block; }
+
+  .panel-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .panel-meta .topic {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+  }
+  .progress-info {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .06em;
+  }
+
+  /* ── Card grid ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+  }
+
+  /* ── Flashcard ── */
+  .card-wrap {
+    perspective: 1000px;
+    height: 200px;
+    cursor: pointer;
+  }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.4,0,.2,1);
+  }
+  .card-wrap.flipped .card-inner { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 10px;
+    padding: 24px 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1.5px solid var(--border);
+  }
+  .card-front {
+    background: var(--card-bg);
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .card-back {
+    background: var(--ink);
+    color: #f5f2ec;
+    transform: rotateY(180deg);
+    border-color: var(--ink);
+  }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .card-front .card-label { color: var(--accent1); }
+  .card-back .card-label { color: rgba(245,242,236,.45); }
+
+  .card-question {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    line-height: 1.45;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+  }
+  .card-answer {
+    font-size: 13px;
+    line-height: 1.6;
+    font-weight: 300;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    color: rgba(245,242,236,.9);
+  }
+
+  .card-hint {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .card-back .card-hint { color: rgba(245,242,236,.35); }
+
+  /* ── Category badges ── */
+  .card-cat {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+    width: fit-content;
+  }
+  .cat-ontologia  { background: #fde8df; color: #c8572a; }
+  .cat-epistem    { background: #ddeeff; color: #2a6fc8; }
+  .cat-paradigma  { background: #e8f5e9; color: #2e7d32; }
+  .cat-hermeneu   { background: #f3e5f5; color: #7b1fa2; }
+  .cat-fenomeno   { background: #fff8e1; color: #f57f17; }
+  .cat-datos      { background: #e0f7fa; color: #00838f; }
+  .cat-principios { background: #fce4ec; color: #c62828; }
+
+  /* ── Shuffle button ── */
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .btn:hover { background: var(--ink); color: var(--bg); }
+  .btn-primary {
+    background: var(--accent1);
+    color: white;
+    border-color: var(--accent1);
+  }
+  .btn-primary:hover { background: #a84520; border-color: #a84520; color: white; }
+
+  .count-badge {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  /* ── Divider ── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 32px 0 20px;
+  }
+  .section-divider span {
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .section-divider::before, .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  @media (max-width: 600px) {
+    header, .tabs-wrap, .panel { padding-left: 20px; padding-right: 20px; }
+    .cards-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">MTIC612 · Material de Estudio</p>
+  <h1>Flash<span>cards</span></h1>
+  <p class="subtitle">Haz clic en cada tarjeta para ver la respuesta</p>
+</header>
+
+<div class="tabs-wrap">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab1">Tema 2 — Paradigmas de Investigación</button>
+    <button class="tab-btn" data-tab="tab2">Tema 3 — Recolección de Datos</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TEMA 2 – PARADIGMAS
+═══════════════════════════════════════════ -->
+<div id="tab1" class="panel active">
+
+  <div class="panel-meta">
+    <span class="topic">Paradigmas de Investigación</span>
+    <span class="progress-info" id="count1"></span>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="resetAll('grid1')">↺ Voltear todas</button>
+    <button class="btn" onclick="shuffleGrid('grid1')">⇄ Mezclar</button>
+  </div>
+
+  <div class="cards-grid" id="grid1">
+
+    <!-- Ontología -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-ontologia">Ontología</span>
+          <div class="card-question">¿Qué estudia la ontología en el contexto de la investigación?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Estudia el "estado de ser" y se pregunta si algo es real. En investigación social, examina si la realidad social es única e independiente de los actores (objetivismo) o múltiple y dependiente de ellos (constructivismo).</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-ontologia">Ontología</span>
+          <div class="card-question">¿Cuáles son las tres posiciones ontológicas principales presentadas en el tema?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Objetivismo/Realismo (única realidad independiente de actores), Constructivismo (realidad múltiple dependiente de actores) y Pragmatismo (posición intermedia).</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-ontologia">Ontología</span>
+          <div class="card-question">¿Qué es el Teorema de Thomas y cómo se aplica al investigador?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">"Si la persona define las situaciones como reales, estas son reales en sus consecuencias." Para el investigador: si define algo como real porque le sirve a su estudio, esa definición guía los resultados — lo cual es una alerta sobre sesgos.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Epistemología -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-epistem">Epistemología</span>
+          <div class="card-question">¿Qué es la epistemología y de qué se ocupa?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Estudia qué es el conocimiento y cómo lo obtenemos. Aborda las circunstancias históricas, psicológicas y sociológicas que llevan a obtener conocimiento, y los criterios para justificarlo o invalidarlo.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-epistem">Epistemología</span>
+          <div class="card-question">¿Qué diferencia hay entre Erklären y Verstehen?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Erklären = explicación causal (lógica deductiva: A+B → C). Verstehen = entendimiento interpretativo (comprender la experiencia subjetiva: ¿qué sienten las personas, qué observo en sus rostros?).</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-epistem">Epistemología</span>
+          <div class="card-question">¿Qué diferencia existe entre verificación y falsificación?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Verificación: buscar evidencia que confirme la teoría. Falsificación (Popper): una teoría es científica solo si puede ser refutada; en cuanto se encuentra un caso contrario, la teoría cae.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Positivismo -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-paradigma">Positivismo</span>
+          <div class="card-question">¿Cuáles son las características clave del paradigma positivista?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Conocimiento obtenido por los sentidos (empírico), realidad objetiva e independiente del observador, uso de deducción e inducción, valor neutral ("libre de valor") y énfasis en lo científico vs normativo.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-paradigma">Positivismo</span>
+          <div class="card-question">En el ejemplo de la pantalla, ¿cómo aplica el positivismo a la ontología, epistemología y metodología?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Ontología: ¿Cuál es la realidad objetiva de la pantalla y qué leyes la gobiernan? Epistemología: conocimiento por evidencia científica. Metodología: experimentación y deducción.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interpretativismo -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-paradigma">Interpretativismo</span>
+          <div class="card-question">¿En qué se basa la investigación interpretativa y cómo accede a la realidad?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Accede a la realidad solo a través de construcciones sociales (lenguaje, ingenio, compartir). Busca entender fenómenos por el significado que la gente les da. Se basa en hermenéutica y fenomenología.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-paradigma">Interpretativismo</span>
+          <div class="card-question">¿Qué metodologías se asocian al interpretativismo?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Narrativa, fenomenología, etnografía, estudio de caso, teoría fundamentada e investigación de acción.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paradigma -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-paradigma">Paradigma</span>
+          <div class="card-question">¿Cuáles son los tres componentes que forman un paradigma de investigación?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Epistemología (¿cómo obtenemos conocimiento?), Ontología (¿qué es la realidad?) y Metodología de investigación (¿cómo lo investigamos?). Los tres se interrelacionan e influyen mutuamente.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-paradigma">Paradigma</span>
+          <div class="card-question">¿Qué son las "perspectivas filosóficas" y para qué sirven en una investigación?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Son los supuestos que fundamentan la selección del método a usar y la validez de la investigación. En otras palabras: definen qué base de conocimiento guía toda la investigación.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hermenéutica -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-hermeneu">Hermenéutica</span>
+          <div class="card-question">¿Qué es la hermenéutica y cuál es su proceso fundamental?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Arte de interpretar mensajes (del dios Hermes). Su proceso: Elucutio (texto) → Interpretatio → Explicatio (texto del intérprete). Implica leer, interpretar, releer lo interpretado, en ciclo, siempre analizando en contexto.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fenomenología -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-fenomeno">Fenomenología</span>
+          <div class="card-question">¿Qué estudia la fenomenología y cuáles son sus tres métodos de interpretación?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Estudia los fenómenos observables y da explicación del ser y la conciencia. Sus métodos: 1) Describir una experiencia vivida, 2) Interpretar el tipo de experiencia (hermenéutica), 3) Analizar la forma de la experiencia.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-fenomeno">Fenomenología</span>
+          <div class="card-question">¿Qué diferencia hay entre construcciones de primer orden y segundo orden en la fenomenología del mundo social?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Primer orden: cada persona toma el mundo como natural, con tipificaciones y "recetas" estándar de acción. Segundo orden: el investigador va más allá de lo natural, usando la duda y el paréntesis (epoché) para cuestionar lo dado.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid1 -->
+</div><!-- /tab1 -->
+
+
+<!-- ═══════════════════════════════════════════
+     TEMA 3 – RECOLECCIÓN DE DATOS
+═══════════════════════════════════════════ -->
+<div id="tab2" class="panel">
+
+  <div class="panel-meta">
+    <span class="topic">Recolección de Datos</span>
+    <span class="progress-info" id="count2"></span>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="resetAll('grid2')">↺ Voltear todas</button>
+    <button class="btn" onclick="shuffleGrid('grid2')">⇄ Mezclar</button>
+  </div>
+
+  <div class="cards-grid" id="grid2">
+
+    <!-- Documentos -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-datos">Documentos</span>
+          <div class="card-question">¿Cuáles son las principales ventajas de usar documentos como fuente de datos?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Son estables (revisables varias veces), oportunos (no creados para el estudio), exactos (nombres y detalles precisos) y ofrecen amplia cobertura en tiempo, eventos y escenarios.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-datos">Documentos</span>
+          <div class="card-question">¿Cuáles son las principales desventajas de los documentos como fuente?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Baja recuperabilidad, sesgo en la selección (colección incompleta), biografías de autores reportadas con parcialidad y posible acceso bloqueado a ciertos documentos.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registros archivados -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-datos">Registros Archivados</span>
+          <div class="card-question">¿Qué ventaja adicional tienen los registros archivados frente a los documentos comunes?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Además de las ventajas comunes (estabilidad, exactitud, cobertura), los registros archivados son cuantitativos y precisos, lo que permite análisis numérico más riguroso.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entrevistas -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-datos">Entrevistas</span>
+          <div class="card-question">¿Cuáles son las ventajas y desventajas de las entrevistas como técnica de recolección?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Ventajas: enfocadas en el tema del estudio y permiten profundidad. Desventajas: baja recuperabilidad, sesgo en la construcción de preguntas, inexactitud y reflexividad (el entrevistado dice lo que quiere ser escuchado).</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observación directa -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-datos">Observación Directa</span>
+          <div class="card-question">¿Qué es la reflexividad como desventaja en la observación directa?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Ocurre cuando el evento o los participantes reaccionan de forma diferente al saber que están siendo observados, alterando la naturalidad del comportamiento y afectando la validez de los datos.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-datos">Observación Directa</span>
+          <div class="card-question">¿Cuáles son las ventajas de la observación directa?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Captura la realidad en tiempo real y es contextual (el contexto queda cubierto). Sus desventajas incluyen el tiempo requerido, la selectividad, la reflexividad y el costo.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observación participativa -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-datos">Obs. Participativa</span>
+          <div class="card-question">¿En qué se diferencia la observación participativa de la directa, y cuál es su riesgo adicional?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Agrega perspicacia sobre el comportamiento interpersonal. El riesgo adicional es que el investigador puede manipular los eventos, lo cual compromete la objetividad de los datos.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Artefactos físicos -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-datos">Artefactos Físicos</span>
+          <div class="card-question">¿Qué ventaja y qué desventajas tienen los artefactos físicos como fuente de datos?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Ventaja: son perspicaces, revelan información cultural y de operaciones técnicas. Desventajas: selectividad (no todos son accesibles) y disponibilidad limitada.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Principios -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-principios">Principios</span>
+          <div class="card-question">¿Cuáles son los tres principios clave de la recolección de datos?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">1) Recursos múltiples de evidencia (triangulación), 2) Base de datos del caso de estudio, 3) Cadena de evidencia: preguntas → datos recolectados → conclusiones.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Triangulación -->
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-principios">Triangulación</span>
+          <div class="card-question">¿Qué es la triangulación y qué diferencia hay entre convergencia y no convergencia de evidencia?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Convergencia (estudio único): múltiples fuentes apuntan al mismo hecho (documentos, registros, entrevistas, observaciones). No convergencia (subestudios separados): cada fuente genera hallazgos y conclusiones propias que luego se comparan.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-principios">Triangulación</span>
+          <div class="card-question">¿Por qué se recomienda usar múltiples fuentes de evidencia en lugar de una sola?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Porque cada fuente tiene sus propias limitaciones y sesgos. Combinar documentos, registros, entrevistas y observaciones permite compensar las debilidades individuales y aumentar la validez y confiabilidad de los hallazgos.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-wrap" onclick="this.classList.toggle('flipped')">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div><span class="card-cat cat-principios">Cadena de Evidencia</span>
+          <div class="card-question">¿Qué es la cadena de evidencia y por qué es importante mantenerla?</div></div>
+          <span class="card-hint">Toca para ver respuesta</span>
+        </div>
+        <div class="card-face card-back">
+          <span class="card-label">Respuesta</span>
+          <div class="card-answer">Es el vínculo trazable entre preguntas de investigación → datos recolectados → conclusiones. Mantenerla garantiza que cualquier lector externo pueda seguir el razonamiento del investigador y verificar la validez de las conclusiones.</div>
+          <span class="card-hint">Toca para volver</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid2 -->
+</div><!-- /tab2 -->
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Shuffle
+  function shuffleGrid(gridId) {
+    const grid = document.getElementById(gridId);
+    const cards = [...grid.children];
+    cards.sort(() => Math.random() - .5);
+    cards.forEach(c => { c.classList.remove('flipped'); grid.appendChild(c); });
+  }
+
+  // Reset (flip all face-down back to question)
+  function resetAll(gridId) {
+    document.querySelectorAll(`#${gridId} .card-wrap`).forEach(c => c.classList.remove('flipped'));
+  }
+
+  // Card counts
+  function updateCount(gridId, countId) {
+    const total = document.querySelectorAll(`#${gridId} .card-wrap`).length;
+    document.getElementById(countId).textContent = `${total} tarjetas`;
+  }
+  updateCount('grid1', 'count1');
+  updateCount('grid2', 'count2');
+</script>
+</body>
+</html>
